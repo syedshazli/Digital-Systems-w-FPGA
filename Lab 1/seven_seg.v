@@ -25,9 +25,9 @@ module seven_seg(
     input [3:0] displayB,
     input [3:0] displayC,
     input [3:0] displayD,
-    input [3:0] Select,
-    output reg [6:0] seg,
-    output reg [3:0] anode // reg because it is inside an always block
+    input [3:0] select,
+    output reg [6:0] segment, // segment to be connected to the seg in the constraints file
+    output reg [3:0] anode // anode, reg because it is inside an always block
   
    
     );
@@ -46,20 +46,20 @@ module seven_seg(
 //	   Multiple Statements
 //    end else
 //	   Single statement
-    always @ Select
+    always @ select
     begin
         // for each case of select, set the corresponding hex to that of the display, and set the anode to 1
-        if (Select[0] ==1) 
+        if (select[0] ==1) 
         begin
             hex = displayA;
             anode[3] = 1;
         end
-        else if (Select[1] ==1)
+        else if (select[1] ==1)
         begin
             hex = displayB;
             anode[2] = 1;
         end
-        else if (Select[2] == 2)
+        else if (select[2] == 2)
         begin
             hex = displayC;
             anode[1] = 0;
@@ -81,22 +81,22 @@ module seven_seg(
     always @*
     begin
         case(hex)
-            4'h0: seg[6:0] = 7'b1000000;    // digit 0
-            4'h1: seg[6:0] = 7'b1111001;    // digit 1
-            4'h2: seg[6:0] = 7'b0100100;    // digit 2
-            4'h3: seg[6:0] = 7'b0110000;    // digit 3
-            4'h4: seg[6:0] = 7'b0011001;    // digit 4
-            4'h5: seg[6:0] = 7'b0010010;    // digit 5
-            4'h6: seg[6:0] = 7'b0000010;    // digit 6
-            4'h7: seg[6:0] = 7'b1111000;    // digit 7
-            4'h8: seg[6:0] = 7'b0000000;    // digit 8
-            4'h9: seg[6:0] = 7'b0010000;    // digit 9
-            4'ha: seg[6:0] = 7'b0001000;    // digit A
-            4'hb: seg[6:0] = 7'b0000011;    // digit B
-            4'hc: seg[6:0] = 7'b1000110;    // digit C
-            4'hd: seg[6:0] = 7'b0100001;    // digit D
-            4'he: seg[6:0] = 7'b0000110;    // digit E
-            default: seg[6:0] = 7'b0001110; // digit F
+            4'h0: segment[6:0] = 7'b1000000;    // digit 0
+            4'h1: segment[6:0] = 7'b1111001;    // digit 1
+            4'h2: segment[6:0] = 7'b0100100;    // digit 2
+            4'h3: segment[6:0] = 7'b0110000;    // digit 3
+            4'h4: segment[6:0] = 7'b0011001;    // digit 4
+            4'h5: segment[6:0] = 7'b0010010;    // digit 5
+            4'h6: segment[6:0] = 7'b0000010;    // digit 6
+            4'h7: segment[6:0] = 7'b1111000;    // digit 7
+            4'h8: segment[6:0] = 7'b0000000;    // digit 8
+            4'h9: segment[6:0] = 7'b0010000;    // digit 9
+            4'ha: segment[6:0] = 7'b0001000;    // digit A
+            4'hb: segment[6:0] = 7'b0000011;    // digit B
+            4'hc: segment[6:0] = 7'b1000110;    // digit C
+            4'hd: segment[6:0] = 7'b0100001;    // digit D
+            4'he: segment[6:0] = 7'b0000110;    // digit E
+            default: segment[6:0] = 7'b0001110; // digit F
         endcase
         
     end // end of hex to seven seg decoder
