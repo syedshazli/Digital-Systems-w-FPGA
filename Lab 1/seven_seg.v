@@ -26,18 +26,26 @@ module seven_seg(
     input [3:0] displayC,
     input [3:0] displayD,
     input [3:0] Select,
-    output [6:0] sevenSeg,
-    output reg [3:0] anode
+    output reg [6:0] seg,
+    output reg [3:0] anode // reg because it is inside an always block
   
    
     );
     reg [3:0] hex; // Used internally for hex to 7 seg decoder
-    reg [6:0] seg; // Used internally for hex to 7 seg decoder
+ 
     
     
     
     // Create a mux to select which value to display
     // Instead of using the ? operator to use our mux, we will use if-else if-else
+    
+     //Syntax is as follows
+//    if ([expression 1])
+//	   Single statement
+//    else if ([expression 2]) begin
+//	   Multiple Statements
+//    end else
+//	   Single statement
     always @ Select
     begin
         // for each case of select, set the corresponding hex to that of the display, and set the anode to 1
@@ -64,13 +72,7 @@ module seven_seg(
         
     end // end of mux that selects
     
-    //Syntax is as follows
-//    if ([expression 1])
-//	   Single statement
-//    else if ([expression 2]) begin
-//	   Multiple Statements
-//    end else
-//	   Single statement
+   
  
  
  
@@ -102,4 +104,3 @@ module seven_seg(
 
     
 endmodule
-
