@@ -21,14 +21,15 @@
 
 
 module input_select(
-    input wire [1:0] mode,
-    input wire [13:0] slider,
-    output reg [3:0] dispA,
-    output reg [3:0] dispB,
-    output reg [3:0] dispC,
-    output reg [3:0] dispD, 
-           reg [4:0] sum // used to calculate sum in mode 3
+    input wire [1:0] mode, // mode selector
+    input wire [13:0] slider, // 14 bit slider
+    output reg [3:0] dispA, // display A
+    output reg [3:0] dispB, // display B
+    output reg [3:0] dispC, // display C
+    output reg [3:0] dispD // displayD
+           
     );
+    reg [4:0] sum; // used to calculate sum in mode 3
     
     always @ (mode)
         case (mode)
