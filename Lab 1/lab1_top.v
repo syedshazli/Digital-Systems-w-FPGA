@@ -28,7 +28,6 @@ module lab1_top(
     input wire btnR,             // Button Right
     input wire btnD,             // Button Down
     output wire [6:0] seg,       // Seven-segment display segments
-    output wire dp,              // Decimal point for the seven-segment display
     output wire [3:0] an         // Anodes for the seven-segment display
     );
     // internal wires
@@ -40,18 +39,18 @@ module lab1_top(
     
     
     // Assign button signals to the internal pb wire
-    assign pushbutton[0] = btnU;
-    assign pushbutton[1] = btnL;
-    assign pushbutton[2] = btnR;
-    assign pushbutton[3] = btnD;
-    
+    assign pushbutton[0] = btnU; //display A
+    assign pushbutton[1] = btnL; // display B
+    assign pushbutton[2] = btnR; // display C
+    assign pushbutton[3] = btnD; //display D
+    assign dp = 0;
     
     always @*
     begin
         led = sw;
         
     end
-    assign pushbutton[0] = btnU;
+   
   
     
      
@@ -71,10 +70,9 @@ seven_seg sevseg(
     .displayB(dispBWire),
     .displayC(dispCWire),
     .displayD(dispDWire),
-    .select(pb),
+    .select(pushbutton),
     .segment(seg),
     .anode(an)
 );
 
 endmodule
-
