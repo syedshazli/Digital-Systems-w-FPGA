@@ -1,21 +1,19 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
+// Company: WPI
+// Engineer: Syed Shazli
 // 
 // Create Date: 01/17/2025 11:00:25 PM
-// Design Name: 
+// Design Name: lab_1_ECE3829
 // Module Name: input_select
-// Project Name: 
-// Target Devices: 
+// Project Name: lab_1_ECE3829
+// Target Devices: FPGA
 // Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
+// Description: This serves as a input select module which provides the logic for when the user wants to use the various modes outlined in the assignment, as well as providing logic for those modes
+
 // Revision:
 // Revision 0.01 - File Created
-// Additional Comments:
+
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -31,7 +29,7 @@ module input_select(
     );
     wire [4:0] sum; // used to calculate sum in mode 3
     assign sum = slider[7:4] + slider[3:0]; // initialise 5 bit register
-  
+  // always @ block to account for each of the various modes and their respective logic
     always @*
     begin
         case (mode)
@@ -70,8 +68,8 @@ module input_select(
             // mode 3, combination of outputs
             2'b11:
             begin
-                dispA <= slider[7:4];
-                dispB <= slider[3:0];
+                dispA <= slider[7:4]; // 4 bits for display A
+                dispB <= slider[3:0]; // 4 bits for display B 
                 dispC <= sum[4]; // 5th bit
                 dispD <= sum[3:0]; // bits 3 to 0
             end
