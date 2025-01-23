@@ -56,14 +56,17 @@ module input_select(
             end
             
             //mode 2, multiplication operator 
-            2'b10:
-            begin
-                dispA <= slider[13:12]; //  display A, remians unchanged
-                dispB <= slider[11:8];  //  display B, remains unchanged
-                dispC <= slider[7:4]<<1;//  display C, multiply by 2
-                dispD <= slider[3:0]<<1; // display D, multiply by 2
-            end
-//                sum <= slider[7:4] + slider[3:0]; // initialise 5 bit register          
+           2'b10:
+           begin
+           dispA <= slider[13:12];          // Display A: Top 2 bits of sw[13:8]
+           dispB <= slider[11:8];           // Display B: Next 4 bits of sw[13:8]
+    
+           // Perform the left shift (<< 1) on sw[13:8] and split into two parts
+           dispC <= ((slider[13:8] << 1) & 7'b1110000) >> 4; // Upper 3 bits (times2[6:4])
+           dispD <= (slider[13:8] << 1) & 4'b1111;          // Lower 4 bits (times2[3:0])
+           end
+
+       
             // mode 3, combination of outputs
             2'b11:
             begin
