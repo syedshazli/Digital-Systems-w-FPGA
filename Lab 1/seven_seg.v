@@ -46,29 +46,36 @@ module seven_seg(
 //	   Multiple Statements
 //    end else
 //	   Single statement
-    always @ select
+    always @*
     begin
         // for each case of select, set the corresponding hex to that of the display, and set the anode to 1
-        if (select[0] ==1) 
-        begin
-            hex = displayA;
-            anode[3] = 1;
-        end
-        else if (select[1] ==1)
-        begin
-            hex = displayB;
-            anode[2] = 1;
-        end
-        else if (select[2] == 2)
-        begin
-            hex = displayC;
-            anode[1] = 0;
-        end
-        else
-        begin
-            hex = displayD;
-            anode[0] = 1;
-        end
+        
+    if (select[0]) // Activate AN0
+    begin
+        hex = displayA;
+        anode = 4'b0111; // AN0 active (low)
+    end
+    else if (select[1]) // Activate AN1
+    begin
+        hex = displayB;
+        anode = 4'b1011; // AN1 active (low)
+    end
+    else if (select[2]) // Activate AN2
+    begin
+        hex = displayC;
+        anode = 4'b1101; // AN2 active (low)
+    end
+    else if (select[3]) // Activate AN3
+    begin
+        hex = displayD;
+        anode = 4'b1110; // AN3 active (low)
+    end
+    else
+    begin
+        hex = 4'b0000;
+        anode = 4'b1111; // All anodes inactive (high)
+    end
+
         
     end // end of mux that selects
     
