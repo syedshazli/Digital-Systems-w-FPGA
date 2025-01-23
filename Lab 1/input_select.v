@@ -29,23 +29,22 @@ module input_select(
     output reg [3:0] dispD // displayD
            
     );
-    reg [4:0] sum; // used to calculate sum in mode 3
-    
-    always @ (mode)
+    wire [4:0] sum; // used to calculate sum in mode 3
+    assign sum = slider[7:4] + slider[3:0]; // initialise 5 bit register
+  
+    always @*
+    begin
         case (mode)
             //mode 0, show WPI ID digits
             2'b00: 
             begin
                 //mode 0, all 4 outputs are wpi ID
-                dispA = 4'b0010; //digit 2
-                dispB = 4'b0001; // digit 1
-                dispC = 4'b1000; // digit 8
-                dispD = 4'b0100; // digit 4
+                dispA <= 4'b0010; //digit 2
+                dispB <= 4'b0001; // digit 1
+                dispC <= 4'b1000; // digit 8
+                dispD <= 4'b0100; // digit 4
                 
-                //4'h2: seg[6:0] = 7'b0100100;    // digit 2
-//                dispB = 4'h1: seg[6:0] = 7'b1111001;    // digit 1
-//                dispC = 4'h8: seg[6:0] = 7'b0000000;    // digit 8
-//                dispD = 4'h4: seg[6:0] = 7'b0011001;    // digit 4
+         
             end
             //mode 1, hexa to decimal
             2'b01:
@@ -64,15 +63,17 @@ module input_select(
                 dispC <= slider[7:4]<<1;//  display C, multiply by 2
                 dispD <= slider[3:0]<<1; // display D, multiply by 2
             end
-            
+//                sum <= slider[7:4] + slider[3:0]; // initialise 5 bit register          
             // mode 3, combination of outputs
             2'b11:
             begin
                 dispA <= slider[7:4];
                 dispB <= slider[3:0];
-                sum <= slider[7:4] + slider[3:0]; // initialise 5 bit register
                 dispC <= sum[4]; // 5th bit
                 dispD <= sum[3:0]; // bits 3 to 0
             end
         endcase
+    end
+        
+        
 endmodule
