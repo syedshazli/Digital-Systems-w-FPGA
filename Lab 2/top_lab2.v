@@ -21,9 +21,16 @@
 module top_lab2(
     input clk, // input clock
     input btnC, // actuve low negedge, pass down to reset
-    input [1:0] sw // negedge
+    input [1:0] sw, // negedge
+    output wire [6:0] seg,       // Seven-segment display segments
+    output wire [3:0] an         // Anodes for the seven-segment display
     );
-   
+    // internal wires A-D for sev seg display
+    wire [3:0] dispAWire;
+    wire [3:0] dispBWire; 
+    wire [3:0] dispCWire;
+    wire [3:0] dispDWire;
+    
     wire hCount;
     wire vCount;
     wire blank; // default in all cases
@@ -42,5 +49,15 @@ module top_lab2(
     .clk_in1(clk)     // input clk_in1
     ); // end of conversion
     
-    
+    // seven seg module
+    seven_seg sevseg(
+        .displayA(4'd2),
+        .displayB(4'd7),
+        .displayC(4'd8),
+        .displayD(4'd9),
+        .reset_n(reset_n),
+        .clk_25mhz(clk_25mhz),
+        .segment(segment),
+        .anode(anode)
+    );
 endmodule
