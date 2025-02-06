@@ -23,7 +23,7 @@
 module VGA_Disp(
     input [1:0] sw, // switch for color display
     input clk_25mhz, // 25 mhz clock
-    input reset, // negedge reset controlled by button D
+    input wire reset, // negedge reset controlled by button D
     input wire [10:0] hCount, // wire from VGA controller output
     input wire [10:0] vCount, // wire from VGA controller output
     input wire blank, // default in all cases
@@ -71,24 +71,55 @@ module VGA_Disp(
                             end
                     end
             
-                2'b10:
+                2'b10: // A black screen with a green block 128-pixels wide by 128-pixels high in the top right-
+                        //hand corner
                     begin
+                        if(hCount >= 512 && hCount < 640 && vCount < 128)
+                        begin
+                                colorValue = COLOR_BLUE;
+                        end 
+                        else
+                            begin
+                                colorValue = COLOR_BLACK;
+                            end
                     end
-                2'b11:
+                2'b11: // A single horizontal blue stripe 32-pixels wide at the bottom of the screen.
+                        //Rest of the screen is black
                     begin
+                        if(vCount >= 447 && vCount < 479 )
+                        begin
+                            colorValue = COLOR_BLUE;
+                        end
+                        
+                        else
+                        begin
+                            colorValue = COLOR_BLACK;
+                        end
                     end
+                    
+                    
                 default: colorValue = COLOR_BLACK;
                 endcase
           end // end of case
           
-          else //
+          else // if it's blank, make colorValue black
           begin
             colorValue = COLOR_BLACK;
           end
     end
-    // always @ posedge clock
-    //      // case (select color based on this)
-    //  need combination of rgb to generate yello
+   
+   // part 3B: moving block
+   // maybe create a flag whenever this button is pressed because it takes priority. Need to let other button functions know
+   always @ (posedge clk_25mhz)
+   begin
+            if(hCount == 319 && vCount == 0 )
+                begin
+                    
+                end
+          // middle horizontally is hCount = 319, vCount = 0
+        // use hCount[5] and vCount[5], start at top middle
+        // then we start moving down. if vCount = 479, stop? or reverse
+   end
     
      assign vgaRed = colorValue[11:8];
     assign vgaGreen = colorValue[7:4];
