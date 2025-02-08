@@ -24,6 +24,7 @@ module VGA_Disp(
     input [1:0] sw, // switch for color display
     input clk_25mhz, // 25 mhz clock
     input wire reset, // negedge reset controlled by button D
+    input wire buttonL,
     input wire [10:0] hCount, // wire from VGA controller output
     input wire [10:0] vCount, // wire from VGA controller output
     input wire blank, // default in all cases
@@ -33,6 +34,7 @@ module VGA_Disp(
   
     );
     reg [11:0] colorValue; 
+    reg pushedButton; // for making sure moving block takes priority, must be pinned to a button on FPGA
     
    // Define 12-bit color parameters: 4 bits per channel
     parameter COLOR_YELLOW = 12'b1111_1111_0000; // Yellow (R=F, G=F, B=0)
@@ -42,12 +44,71 @@ module VGA_Disp(
     parameter COLOR_BLUE   = 12'b0000_0000_1111; // Blue (R=0, G=0, B=F)
     parameter COLOR_BLACK  = 12'b0000_0000_0000; // Black (R=0, G=0, B=0)
     
+    // 2 HZ clock rate to move block down
+    parameter MODIFIED_CLK_RATE = 12500000;
+
+    // Registers for block movement (part 3B)
+    // we don't want to completely reset hCount and vCount, as they are wires defined by the vga controller
+    // instead, we will make x, y regs that will monitor the positioning of vCount and hCount
+        // helping us determine if we can make a valid move for our 32 x 32 block
+    reg [9:0] block_y_pos = 0; 
+    reg [9:0] block_x_pos = 302; // Fixed x-position in the middle of screen
+    reg [23:0] clock_counter = 0; // 2 hz clock counter
+    reg moving_block_mode = 0;
     
+    
+     // part 3B: moving block
+   // maybe create a flag whenever this button is pressed because it takes priority. Need to let other button functions know
+   always @ (posedge clk_25mhz)
+   begin
+            // clock cycle reset
+           if(!reset)
+           begin
+                moving_block_mode <= 0;
+                block_y_pos <= 0;
+                clock_counter <= 0;
+           end
+           
+           // button is pressed down indicating we want to see the moving block
+           // must keep incrmeenting block_y_pos
+           else if(buttonL)
+           begin
+           moving_block_mode <= 1;
+           clock_counter <= clock_counter +1;
+           
+           // 2 Hz rate, let's move the block down
+           if(clock_counter >= MODIFIED_CLK_RATE)
+           begin
+           if(block_y_pos < 416) // 448 - 32 (make sure we are placing in a valid y position)
+                block_y_pos <= block_y_pos +1;
+                
+            clock_counter <= 0; // reset counter
+           end
+            
+            
+           end // end of else if
+           
+           // button is not pressed down, stop block from moving    
+           else
+           begin
+           moving_block_mode <=1;
+           clock_counter <=0; // reset frame counter
+           end
+    
+   end
     
     always @(*)
     begin
+        
+        
         if(!blank)
         begin
+        // checks if pixels are in the moving block area
+            if(moving_block_mode ==1 && hCount >= block_x_pos && hCount < block_x_pos + 32 &&
+                vCount >= block_y_pos && vCount < block_y_pos + 32)
+            begin
+                colorValue = COLOR_RED;
+            end
             case(sw)
                 2'b00: 
                     begin
@@ -76,7 +137,7 @@ module VGA_Disp(
                     begin
                         if(hCount >= 512 && hCount < 640 && vCount < 128)
                         begin
-                                colorValue = COLOR_BLUE;
+                                colorValue = COLOR_GREEN;
                         end 
                         else
                             begin
@@ -107,20 +168,10 @@ module VGA_Disp(
             colorValue = COLOR_BLACK;
           end
     end
-   
-   // part 3B: moving block
-   // maybe create a flag whenever this button is pressed because it takes priority. Need to let other button functions know
-   always @ (posedge clk_25mhz)
-   begin
-            if(hCount == 319 && vCount == 0 )
-                begin
-                    
-                end
-          // middle horizontally is hCount = 319, vCount = 0
-        // use hCount[5] and vCount[5], start at top middle
-        // then we start moving down. if vCount = 479, stop? or reverse
-   end
-    
+ 
+            
+  
+    // as stated in lab instructions
      assign vgaRed = colorValue[11:8];
     assign vgaGreen = colorValue[7:4];
     assign vgaBlue = colorValue[3:0];
