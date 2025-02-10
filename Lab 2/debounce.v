@@ -4,15 +4,11 @@
 // Engineer: 
 // 
 // Create Date: 02/09/2025 05:56:40 PM
-// Design Name: 
+// Design Name: top_lab2
 // Module Name: debounce
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
+// Project Name: lab2_ece_3829
+// Target Devices: Basys3 FPGA
+// Description: This module serves to implement the debouncing logic for the switches and buttons
 // Revision:
 // Revision 0.01 - File Created
 // Additional Comments:
@@ -64,4 +60,3 @@ module debounce(
     
     
 endmodule
-
