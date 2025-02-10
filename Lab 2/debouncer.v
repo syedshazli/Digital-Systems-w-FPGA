@@ -1,13 +1,60 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
+
 // Company: 
 // Engineer: 
 // 
-// Create Date: 02/09/2025 05:56:40 PM
-// Design Name: top_lab2
-// Module Name: debounce
-// Project Name: lab2_ece_3829
-// Target Devices: Basys3 FPGA
+// Create Date: 02/10/2025 02:48:26 PM
+// Design Name: 
+// Module Name: debouncer
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+// File: debouncer.v
+module debouncer(
+    input wire clk_25mhz,
+    input wire reset_n,
+    input wire input_signal,
+    output reg debounced_signal
+);
+
+    reg [17:0] counter;
+    parameter DEBOUNCE_TIME = 250000; // ~10ms at 25MHz
+
+    always @(posedge clk_25mhz or negedge reset_n) begin
+        if (!reset_n) begin
+            counter <= 0;
+            debounced_signal <= 0;
+        end
+        else begin
+            if (input_signal != debounced_signal) begin
+                if (counter == DEBOUNCE_TIME) begin
+                    debounced_signal <= input_signal;
+                    counter <= 0;
+                end
+                else begin
+                    counter <= counter + 1;
+                end
+            end
+            else begin
+                counter <= 0;
+            end
+        end
+    end
+
+endmodule
+
+
 // Description: This module serves to implement the debouncing logic for the switches and buttons
 // Revision:
 // Revision 0.01 - File Created
