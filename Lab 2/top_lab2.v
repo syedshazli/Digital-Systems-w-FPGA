@@ -33,92 +33,56 @@ module top_lab2(
 
     // Internal signals
     wire clk_25mhz;
-    wire reset_n; // Active-low reset
-    wire locked;  // MMCM lock output
-    wire vga_reset; // Active-high reset for VGA controller
+    wire reset_n;      // Active-low reset
+    wire locked;       // MMCM lock output
+    wire vga_reset;    // Active-high reset for VGA controller
+    wire blank;        // Blank signal from VGA controller
     
-    // instantiate hCount and vCount
+    // VGA counter signals
     wire [10:0] hCount;
     wire [10:0] vCount;
     
     // Debounced inputs
-    reg debounced_btnL = 0;
-    reg [1:0] debounced_sw = 0;
+    wire debounced_btnL;
+    wire [1:0] debounced_sw;
     
-    // Debounce counters
-    reg [17:0] btnL_counter = 0;
-    reg [17:0] sw0_counter = 0;
-    reg [17:0] sw1_counter = 0;
-
-    parameter DEBOUNCE_TIME = 250000; // ~10ms debounce delay
-
-    //  Set up reset signals
-    assign reset_n = locked; // Active-low reset for all modules
-    assign vga_reset = btnC; // Invert for VGA controller (active-high)
-
-    //  Debounce for btnL
-    always @(posedge clk_25mhz or negedge reset_n) begin
-        if (!reset_n) begin
-            btnL_counter <= 0;
-            debounced_btnL <= 0;
-        end 
-        else if (btnL != debounced_btnL) begin
-            btnL_counter <= 0; // Reset debounce counter
-        end 
-        else if (btnL_counter >= DEBOUNCE_TIME) begin
-            debounced_btnL <= btnL;
-            btnL_counter <= 0;
-        end 
-        else begin
-            btnL_counter <= btnL_counter + 1;
-        end
-    end
-
-    //   Debounce for sw[0]
-    always @(posedge clk_25mhz or negedge reset_n) begin
-        if (!reset_n) begin
-            sw0_counter <= 0;
-            debounced_sw[0] <= 0;
-        end 
-        else if (sw[0] != debounced_sw[0]) begin
-            sw0_counter <= 0;
-        end 
-        else if (sw0_counter >= DEBOUNCE_TIME) begin
-            debounced_sw[0] <= sw[0];
-            sw0_counter <= 0;
-        end 
-        else begin
-            sw0_counter <= sw0_counter + 1;
-        end
-    end
-
-    // Debounce for sw[1]
-    always @(posedge clk_25mhz or negedge reset_n) begin
-        if (!reset_n) begin // active low
-            sw1_counter <= 0;
-            debounced_sw[1] <= 0;
-        end 
-        else if (sw[1] != debounced_sw[1]) begin
-            sw1_counter <= 0;
-        end 
-        else if (sw1_counter >= DEBOUNCE_TIME) begin
-            debounced_sw[1] <= sw[1];
-            sw1_counter <= 0;
-        end 
-        else begin // increment counter as usual
-            sw1_counter <= sw1_counter + 1;
-        end
-    end
+    // Reset signal assignments
+    assign reset_n = locked;    // Active-low reset for all modules
+    assign vga_reset = !locked; // Active-high reset for VGA controller
 
     // Instantiate the Clock Module
     clk_wiz_0 clk_wiz_0i(
         .clk_25mhz(clk_25mhz),
-        .reset(btnC), // MMCM reset is active-high
+        .reset(btnC),     // MMCM reset is active-high
         .locked(locked),
         .clk_in1(clk)
     );
 
-    //  Instantiate the VGA Display Module (Uses reset_n, and debounced button + switches)
+    // Debouncer for btnL
+    debouncer btnL_debouncer(
+        .clk_25mhz(clk_25mhz),
+        .reset_n(reset_n),
+        .input_signal(btnL),
+        .debounced_signal(debounced_btnL)
+    );
+
+    // Debouncer for sw[0]
+    debouncer sw0_debouncer(
+        .clk_25mhz(clk_25mhz),
+        .reset_n(reset_n),
+        .input_signal(sw[0]),
+        .debounced_signal(debounced_sw[0])
+    );
+
+    // Debouncer for sw[1]
+    debouncer sw1_debouncer(
+        .clk_25mhz(clk_25mhz),
+        .reset_n(reset_n),
+        .input_signal(sw[1]),
+        .debounced_signal(debounced_sw[1])
+    );
+
+    // Instantiate the VGA Display Module
     VGA_Disp VGAdisplay(
         .vgaRed(vgaRed),
         .vgaBlue(vgaBlue),
@@ -127,14 +91,14 @@ module top_lab2(
         .buttonL(debounced_btnL),
         .hCount(hCount),
         .vCount(vCount),
-        .reset_n(reset_n), 
+        .reset_n(reset_n),
         .blank(blank),
         .sw(debounced_sw)
     );
 
-    // Instantiate the VGA Controller (Uses Inverted Reset)
+    // Instantiate the VGA Controller
     vga_controller_640_60 vgaController(
-        .rst(vga_reset),  //  VGA controller requires active-high reset
+        .rst(vga_reset),
         .pixel_clk(clk_25mhz),
         .HS(Hsync),
         .VS(Vsync),
@@ -143,9 +107,9 @@ module top_lab2(
         .blank(blank)
     );
 
-    // Seven Segment Display, pass in WPI ID Digits
+    // Seven Segment Display
     seven_seg sevseg(
-        .displayA(4'h2),  
+        .displayA(4'h2),
         .displayB(4'h7),
         .displayC(4'h8),
         .displayD(4'h9),
@@ -154,5 +118,4 @@ module top_lab2(
         .segment(seg),
         .anode(an)
     );
-
-endmodule
+    endmodule
