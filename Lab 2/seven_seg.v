@@ -58,8 +58,8 @@ module seven_seg(
     always @(*) begin
     if (!reset_n) // reset is active, displays must be off
     begin
-        anode = 4'b1111;  // Force all anodes OFF during reset
-        hex = 4'b0000;    // Ensure segments are OFF
+        anode = 4'b1111;  // Force all anodes off during reset
+        hex = 4'b0000;    // Ensure segments are off
     end 
     else 
     begin
