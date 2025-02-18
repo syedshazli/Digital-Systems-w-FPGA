@@ -1,4 +1,4 @@
-timescale 1ns / 1ps
+`timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // Company: WPI
 // Engineer: Syed Shazli
@@ -8,23 +8,22 @@ timescale 1ns / 1ps
 // Module Name: als_bfm_tb
 // Project Name: ECE_3829_Lab3
 // Target Devices: FPGA
-// Description: This file serves as the testbench for the als_BFM module in the lab.
-// Dependencies: 
+// Description: Testbench for als_bfm using a full 15-bit capture scheme.
 // 
 // Revision:
-// Revision 0.01 - File Created
+// Revision 0.02 - Modified to sample SDO 40 ns after falling edge
 // Additional Comments:
-// 
 //////////////////////////////////////////////////////////////////////////////////
 module als_bfm_tb();
     
     reg SCLK;
     reg CS_N;
     wire SDO;
-    reg [7:0] captured_data;
+    reg [14:0] captured_sequence;  // Store all 15 bits
+    reg [7:0] captured_data;      // Final 8-bit data
     integer i;
     reg [7:0] expected_data;
-    integer current_sequence;  // Added to track sequence number
+    integer current_sequence;
     
     als_bfm uut (
         .SCLK(SCLK),
@@ -32,39 +31,35 @@ module als_bfm_tb();
         .SDO(SDO)
     );
     
+    // Clock generation
     initial begin
         SCLK = 0;
         forever #125 SCLK = ~SCLK;
     end
     
+    // Capture all bits on negedge SCLK
+    always @(negedge SCLK) begin
+        if (!CS_N) begin
+            captured_sequence <= {captured_sequence[13:0], SDO};
+        end
+    end
+    
     initial begin
         CS_N = 1;
-        current_sequence = 0;  // Initialize sequence counter
+        current_sequence = 0;
+        captured_sequence = 15'b0;
         #500;
         
         repeat (4) begin
+            // Start transaction
             CS_N = 0;
-            #125;
+            captured_sequence = 15'b0;  // Clear the capture register
             
-            // Skip 3 leading zeros
-            for (i = 0; i < 3; i = i + 1) begin
-                @(negedge SCLK);
-            end
+            // Wait for all 15 bits to be captured
+            repeat (15) @(negedge SCLK);
             
-            // Capture 8 data bits
-            captured_data = 8'b0;
-            for (i = 0; i < 8; i = i + 1) begin
-                @(negedge SCLK);
-                #40;
-                @(posedge SCLK);
-                
-                captured_data = {captured_data[6:0], SDO};
-            end
-            
-            // Skip 4 trailing zeros
-            for (i = 0; i < 4; i = i + 1) begin
-                @(negedge SCLK);
-            end
+            // Extract the 8 data bits (bits 9:2 of the 15-bit sequence)
+            captured_data = captured_sequence[9:2];
             
             @(posedge SCLK);
             CS_N = 1;
@@ -77,7 +72,7 @@ module als_bfm_tb();
             else
                 $display("[%0t] FAIL: Expected = %b, Actual = %b", $realtime, expected_data, captured_data);
                 
-            current_sequence = (current_sequence + 1) % 4;  // Increment sequence counter
+            current_sequence = (current_sequence + 1) % 4;
             #500;
         end
         
@@ -85,4 +80,4 @@ module als_bfm_tb();
         $stop;
     end
     
-endmodule 
+endmodule
