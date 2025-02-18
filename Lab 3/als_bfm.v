@@ -1,47 +1,45 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 02/14/2025 07:41:47 PM
-// Design Name: 
-// Module Name: als_bfm
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module als_bfm(
-    input cs_n, // falling edge of cs_n, conversion process begins
-    input sclk,
-    output reg sdata,
-    output reg [7:0] lastValSent
-    );
+    input wire SCLK,
+    input wire CS_N,
+    output reg SDO
+);
     
-    parameter DATA_ACCESS_TIME = 40;
+    reg [7:0] data_sequence [0:3];
+    reg [4:0] bit_index;
+    reg [1:0] data_index;
     
-    reg [7:0] sensorValue = 8'd0;
-    reg[3:0] bitCounter;
-    // ADC enters normal mode when cs is low
-    
-    always @ (negedge cs_n)
-    begin
-        sensorValue <= sensorValue + 41; // prime number large enough
-        bitCounter <= 4'd0;
+    initial begin
+        // Initialize data sequence
+        data_sequence[0] = 8'b10100011;
+        data_sequence[1] = 8'b01001111;
+        data_sequence[2] = 8'b11010010;
+        data_sequence[3] = 8'b01101011;
+        bit_index = 0;
+        data_index = 0;
+        SDO = 0;
     end
     
-    always @ (posedge cs_n or negedge sclk)
-    begin
-        
+    always @(negedge SCLK) begin
+        if (!CS_N) begin
+            if (bit_index < 3) begin
+                #40 SDO <= 1'b0;  // 3 leading zeros
+                bit_index <= bit_index + 1;
+            end
+            else if (bit_index < 11) begin  // Bits 3-10 are data
+                #40 SDO <= data_sequence[data_index][10 - bit_index];
+                bit_index <= bit_index + 1;
+            end
+            else if (bit_index < 15) begin  // Bits 11-14 are trailing zeros
+                #40 SDO <= 1'b0;
+                bit_index <= bit_index + 1;
+            end
+        end else begin
+            SDO <= 1'bz;  // Tri-state when CS_N is high
+            bit_index <= 0;
+            if (bit_index == 15) begin  // Only increment data_index when we've completed a full sequence
+                data_index <= data_index + 1;
+                if (data_index == 3) data_index <= 0;
+            end
+        end
     end
 endmodule
-
