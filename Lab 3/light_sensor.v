@@ -48,10 +48,10 @@ module light_sensor #(parameter sensorSampleRate = 1) (
     
     
     // 10 mhz input clock terminal counter
-    localparam C_TERM_COUNT = 4'd9;
+    localparam C_TERM_COUNT = 10;
     // 50% high, 50% low sclk, use this to generate sclk to be 2-4 mhz
-    localparam C_RISE_EDGE = 4'd0;
-    localparam C_FALL_EDGE = 4'd5;
+    localparam C_RISE_EDGE = 0;
+    localparam C_FALL_EDGE = 5;
     
     reg[23:0] lightSensorCounter;
     reg startSPI;
@@ -72,6 +72,7 @@ module light_sensor #(parameter sensorSampleRate = 1) (
     if(!reset_n)
     begin
         lightSensorCounter <= 0;
+        startSPI <= 0;
     end
     
     else if(lightSensorCounter >= (10_000_000/sensorSampleRate)-1)
@@ -91,17 +92,17 @@ module light_sensor #(parameter sensorSampleRate = 1) (
     
     // shift register logic
     always @ (posedge clk_10mHz or negedge reset_n)
+begin
+    if(!reset_n)
     begin
-        if(!reset_n)
-        begin
-            shiftRegister <= 0;
-        end
-        
-        else if(!CS_N)
-        begin
-            shiftRegister <= {shiftRegister[14:0], sensorData};
-        end
+        shiftRegister <= 0;
     end
+    // check if in read state
+    else if(currentState == S_READ && fallingEdge)  // Only shift on SCLK falling edge
+    begin
+        shiftRegister <= {shiftRegister[13:0], sensorData};
+    end
+end
     
     // once shifted, we want only the meaningful 8 bits of data located in SR[10:3]
     always @(posedge clk_10mHz or negedge reset_n)
@@ -111,7 +112,7 @@ module light_sensor #(parameter sensorSampleRate = 1) (
             SDO <= 0;
         end
         
-        else if (bitCounter == 14)
+        else if (currentState == S_DONE)
         begin
             SDO <= shiftRegister[10:3]; // put 8 bits of info onto output
         end
@@ -139,27 +140,20 @@ module light_sensor #(parameter sensorSampleRate = 1) (
     
     // chip select logic
     always @ (posedge clk_10mHz or negedge reset_n)
+begin
+    if(!reset_n)
     begin
-        if(currentState == S_STARTSPI)
-        begin
-            CS_N <= 0; // activate chip select
-        end
-        
-        else
-        begin
-            if(!reset_n)
-            begin
-                CS_N <= 1;
-            end
-            
-            // counted all the bits, reset chip select
-            if(bitCounter == 14)
-            begin
-                CS_N <= 1;
-            end
-                   
-        end
+        CS_N <= 1;
     end
+    else if(currentState == S_STARTSPI)
+    begin
+        CS_N <= 0;
+    end
+    else if(currentState == S_DONE || currentState == S_IDLE)
+    begin
+        CS_N <= 1;
+    end
+end
     
     // bitCounter used to increment every clock cycle that CS is active
     always @ (posedge clk_10mHz or negedge reset_n)
@@ -169,7 +163,7 @@ module light_sensor #(parameter sensorSampleRate = 1) (
             bitCounter <= 0;
         end
         
-        else if(!CS_N)
+        else if(currentState == S_READ && fallingEdge)
         begin
             bitCounter <= bitCounter +1;
         end
@@ -184,23 +178,22 @@ module light_sensor #(parameter sensorSampleRate = 1) (
     // counter used to check against assign statement
     always @ (posedge clk_10mHz or negedge reset_n)
     begin
-        if(!reset_n) // active low reset signal is 1
-        begin
+    if(!reset_n) 
+    begin
+        counter <= 6'd0;
+    end
+    else if(currentState == S_READ) // Only count during READ state
+    begin
+        if(counter >= C_TERM_COUNT)
             counter <= 6'd0;
-        end
-        
-        else if(counter == C_TERM_COUNT)
-        begin
-            counter <= 6'd0;
-        end
-        
         else
-        begin
-            counter <= counter+1;
-        end
-            
-    end // end of posedge clk
-    
+            counter <= counter + 1;
+    end
+    else
+    begin
+        counter <= 6'd0;  // Reset counter in all other states
+    end
+end
  
    
     // control reset
