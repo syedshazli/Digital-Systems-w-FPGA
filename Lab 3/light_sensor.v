@@ -1,15 +1,14 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
+// Company: WPI
+// Engineer: Syed Shazli
 // 
 // Create Date: 02/18/2025 02:35:19 PM
-// Design Name: 
+// Design Name: Lab 3
 // Module Name: light_sensor
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
+// Project Name:ECE_3829_Lab_3
+// Target Devices: FPGA
+// Description: This module aims to serve the light sensor logic using counters and a FSM
 // 
 // Dependencies: 
 // 
@@ -19,234 +18,129 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-
-module light_sensor #(parameter sensorSampleRate = 1) (
-   
+module light_sensor
+#( parameter TERM_COUNT = 10_000_000)
+    (  //Port Paramter
+    input clk_10Mhz, // 10 mhz clock from clock_gen
     input reset_n,
-    input clk_10mHz, // 10 mhz input clock
-    input wire sensorData, // sensor data input   
-    
-    // connections to ALS PMOD
-    output reg SCLK,
-    output reg CS_N,
-    output reg [7:0] SDO
-    
-    
+    input JA2, //SData
+    output reg JA0, //Chip Select
+    output reg JA3, //sclk
+    output reg [7:0] dataRead //8 bit number for the light sensor reading
     );
-    
+
+    //Registers
+    reg [1:0]  newState; // newstate reg for finite state machine logic
+    reg [32:0] counter; //1 second delay counter
+    reg [4:0] sclk_counter; // 5 bit sclk counter
+    reg [7:0] trackingReg; //because its updating too fast place holder register
+
    
+    wire rising_edge;// rising edge used for assign statement w/counter and rise edge param
+    wire falling_edge; // falling edge used for assign statement w/counter and fall edge param
     
-    // The module should have at least one state 
-    // machine for the overall control of the sensor interface
-    
-    // finite state machine 'states'
-    
-    localparam S_IDLE       = 2'b00;
-    localparam S_STARTSPI   = 2'b01;
-    localparam S_READ       = 2'b10;
-    localparam S_DONE       = 2'b11;
-    
-    
-    // 10 mhz input clock terminal counter
-    localparam C_TERM_COUNT = 10;
-    // 50% high, 50% low sclk, use this to generate sclk to be 2-4 mhz
+    //Local Parameters
     localparam C_RISE_EDGE = 0;
     localparam C_FALL_EDGE = 5;
     
-    reg[23:0] lightSensorCounter;
-    reg startSPI;
-    reg[6:0] bitCounter;
-    reg [14:0] shiftRegister;
-     wire risingEdge;
-     wire fallingEdge;
-     reg[5:0] counter;
-     assign risingEdge = (counter == C_RISE_EDGE)? 1'b1: 1'b0;
-     assign fallingEdge = (counter == C_FALL_EDGE)? 1'b1: 1'b0;
-    // registers for state machine
-    reg[2:0] currentState;
-    reg[2:0] nextState;
+    // finite state machine states 
+    localparam S_IDLE = 2'b00;
+    localparam S_WAIT = 2'b01;
+    localparam S_READ = 2'b10;
     
-    // counter for lightSensor, used to set chip select
-    always @ (posedge clk_10mHz or negedge reset_n)
-    begin
-    if(!reset_n)
-    begin
-        lightSensorCounter <= 0;
-        startSPI <= 0;
-    end
-    
-    else if(lightSensorCounter >= (10_000_000/sensorSampleRate)-1)
-    begin
-        lightSensorCounter <= 0;
-         startSPI <= 1;
-    end
-    
-    else
-    begin
-        lightSensorCounter <= lightSensorCounter +1;
-        startSPI <= 0;
-        
-    end
-    
-    end
-    
-    // shift register logic
-    always @ (posedge clk_10mHz or negedge reset_n)
-begin
-    if(!reset_n)
-    begin
-        shiftRegister <= 0;
-    end
-    // check if in read state
-    else if(currentState == S_READ && fallingEdge)  // Only shift on SCLK falling edge
-    begin
-        shiftRegister <= {shiftRegister[13:0], sensorData};
-    end
-end
-    
-    // once shifted, we want only the meaningful 8 bits of data located in SR[10:3]
-    always @(posedge clk_10mHz or negedge reset_n)
-    begin
-        if(!reset_n)
-        begin
-            SDO <= 0;
+    //Assign rising edge and falling edge statements
+    assign rising_edge = (counter == C_RISE_EDGE) ? 1'b1 : 1'b0;
+    assign falling_edge = (counter == C_FALL_EDGE) ? 1'b1 : 1'b0;
+
+
+    //clock frequency divider
+    always @ (posedge clk_10Mhz) 
+    begin  
+    // counter must reach 10, and we must be in the read state 
+    // note that counter starts at 0 so once we reach 9 that is 10 cycles     
+        if (counter >= 9 && newState == S_READ) begin 
+            counter <= 0;
         end
-        
-        else if (currentState == S_DONE)
-        begin
-            SDO <= shiftRegister[10:3]; // put 8 bits of info onto output
+        else begin
+            // otherwise, increment counter (used for checking rising edge and falling edge)
+            counter <= counter + 1; 
         end
-        
     end
     
-    // generate SCLK based on falling/rising edge signals
-    always @ (posedge clk_10mHz or negedge reset_n)
-    begin
-        if(!reset_n)
-        begin
-            SCLK <= 0;
-        end
-        else if(risingEdge)
-        begin
-            SCLK <= 1;
-           
-        end
-        else if (fallingEdge)
-        begin
-            SCLK <= 0;
+    always @ (posedge clk_10Mhz) 
+    begin 
+        if (reset_n == 0) begin
+            // IDLE is the reset state, goes idle when reset is active
+            newState <= S_IDLE; 
+        end       
+        // logic for all 3 states in FSM
+       case (newState)
+            S_IDLE : 
+            begin  //A reset state to initialize the interface on power up
+                JA0 <= 1; //Chip select is pulled high (and is not active)
+                
+                newState <= S_WAIT; // enter the wait state
+            end
             
-        end
-    end
-    
-    // chip select logic
-    always @ (posedge clk_10mHz or negedge reset_n)
-begin
-    if(!reset_n)
-    begin
-        CS_N <= 1;
-    end
-    else if(currentState == S_STARTSPI)
-    begin
-        CS_N <= 0;
-    end
-    else if(currentState == S_DONE || currentState == S_IDLE)
-    begin
-        CS_N <= 1;
-    end
-end
-    
-    // bitCounter used to increment every clock cycle that CS is active
-    always @ (posedge clk_10mHz or negedge reset_n)
-    begin
-        if(!reset_n)
-        begin
-            bitCounter <= 0;
-        end
-        
-        else if(currentState == S_READ && fallingEdge)
-        begin
-            bitCounter <= bitCounter +1;
-        end
-        
-        else
-        begin
-            bitCounter <= 0;
-        end
-        
-    end
-    
-    // counter used to check against assign statement
-    always @ (posedge clk_10mHz or negedge reset_n)
-    begin
-    if(!reset_n) 
-    begin
-        counter <= 6'd0;
-    end
-    else if(currentState == S_READ) // Only count during READ state
-    begin
-        if(counter >= C_TERM_COUNT)
-            counter <= 6'd0;
-        else
-            counter <= counter + 1;
-    end
-    else
-    begin
-        counter <= 6'd0;  // Reset counter in all other states
-    end
-end
- 
-   
-    // control reset
-    always @ (posedge clk_10mHz)
-    begin
-        if (reset_n == 1'b0) 
-        begin
-            currentState <= S_IDLE;
-        end
-        else    
-        begin
-            currentState <= nextState;
-        end
-    end
-    
-    // next state logic
-    always @(*)
-    begin
-        case(currentState)
-            // must change
-            S_IDLE: 
+            //Wait state, reset clk divider and make sure sampling time isn't too fast
+            S_WAIT : 
+            begin 
+                if (counter >= TERM_COUNT) 
                 begin
-                if(startSPI)
-                begin
-                    nextState = S_STARTSPI;
+                    newState <= S_READ; // have finished counting, safe to read data now
+                    sclk_counter <= 0; // reset sclk divider counter                
                 end
-                else
-                    begin
-                    nextState = S_IDLE;
-                    end
-                end
-                // we enter this state only if startSPi is 1, so we can immedietley move on to read
-            S_STARTSPI: 
-                begin
-                    nextState = S_READ;
-                 end
-            S_READ: 
-                begin
-                    if(bitCounter == 14)
-                    begin
-                        nextState = S_DONE;
-                    end
-                    else
-                    begin
-                        nextState = S_READ;
-                    end
-                end
+                
+               else
+               begin
+                newState <= S_WAIT;
+               end
+                
+            end
             
-            S_DONE: 
-                nextState = S_IDLE;
-            default: 
-                nextState = S_IDLE;
+            // read state, use shift register to bring in temporary data
+            // once temp data is read, load temp data into output register
+            // allows us to 'slow down' the fast coming data
+            S_READ : 
+            begin
+                // chip select is active 
+                JA0 <= 0; 
+                
+                if (rising_edge) // if our counter is 0, set sclk to 1
+                begin 
+                    JA3 <= 1;
+                end
+                
+                // if our counter has reached 5, set sclk to 0 (done counting)
+                // increment sclk counter
+                else if (falling_edge) begin
+                    JA3 <= 0;
+                    sclk_counter <= sclk_counter + 1;
+                end    
+                
+                // read data, 3 leading 0's, 8 bits of data, 4 trailing 0's
+                // must be on a rising edge
+                if (sclk_counter >= 4 && sclk_counter <= 11 && rising_edge) 
+                begin 
+                    // chip select is not active, no data to read
+                    if (JA0) begin 
+                        dataRead <= 0;
+                    end
+                    // chip select is active, fill the tracking register and shift left with SDATA
+                    if (!JA0) begin 
+                        trackingReg <= {trackingReg[6:0], JA2}; 
+                    end
+                end
+                
+                // implementing a delay using sclk counter, 
+                //use trackingReg to give steady data to output regsiter
+                // which is then used to put on seven seg
+                if (sclk_counter >= 16) 
+                begin        
+                    dataRead <= trackingReg;
+                    newState <= S_IDLE; // reset state after transferring data
+                end 
+            end
         endcase
     end
-    
 endmodule
