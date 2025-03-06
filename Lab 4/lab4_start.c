@@ -224,142 +224,85 @@ int main() {
 	// if they changed it updates the LED outputs to match the switch values.
 
 	while (1) {
-		check_switches(&sw_data, &sw_data_old, &sw_changes);
-		if (sw_changes) update_LEDs(sw_data);
-		// update_amp2(&amp2_data, target_count, &last_count);
-		// implement btn logic data
-		check_buttons(&btn_data, &btn_data_old, &btn_changes); // pass by ref
+	    // Check for switch and button changes
+	    check_switches(&sw_data, &sw_data_old, &sw_changes);
+	    if (sw_changes) update_LEDs(sw_data);
+	    check_buttons(&btn_data, &btn_data_old, &btn_changes);
 
-		switch(sw_data & GPIO0_SW_MASK){ // switch data input
+	    // Store target count based on switch/button state
+	    u32 current_target_count = target_count_OFF;  // Default to OFF
 
-		// for third octave
-		case(0x00):
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
+	    // Determine which note to play based on switches and buttons
+	    if (btn_data & GPIO2_BTN_MASK) {  // If any button is pressed
+	        switch(sw_data & 0x03) {  // Check only first two switches for octave
+	            case 0x00:  // Octave 3
+	                switch (btn_data & GPIO2_BTN_MASK) {
+	                    case 0b001: current_target_count = target_count_C3; break;
+	                    case 0b010: current_target_count = target_count_D3; break;
+	                    case 0b011: current_target_count = target_count_E3; break;
+	                    case 0b100: current_target_count = target_count_F3; break;
+	                    case 0b101: current_target_count = target_count_G3; break;
+	                    case 0b110: current_target_count = target_count_A3; break;
+	                    case 0b111: current_target_count = target_count_B3; break;
+	                }
+	                break;
 
-		switch (btn_data & GPIO2_BTN_MASK){// button data input
+	            case 0x01:  // Octave 4
+	                switch (btn_data & GPIO2_BTN_MASK) {
+	                    case 0b001: current_target_count = target_count_C4; break;
+	                    case 0b010: current_target_count = target_count_D4; break;
+	                    case 0b011: current_target_count = target_count_E4; break;
+	                    case 0b100: current_target_count = target_count_F4; break;
+	                    case 0b101: current_target_count = target_count_G4; break;
+	                    case 0b110: current_target_count = target_count_A4; break;
+	                    case 0b111: current_target_count = target_count_B4; break;
+	                }
+	                break;
 
-		case(0b001): // C3
-				update_amp2(&amp2_data, target_count_C3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xC6);
-				break;
-		case(0b010): //D3
-				update_amp2(&amp2_data, target_count_D3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xA1);
-				break;
-		case(0b011): // E3
-				update_amp2(&amp2_data, target_count_E3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x86);
-				break;
-		case(0b100): // F3
-				update_amp2(&amp2_data, target_count_F3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x8e);
-				break;
-		case(0b101): //G3
-				update_amp2(&amp2_data, target_count_G3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x90);
-				break;
-		case(0b110): // A3
-				update_amp2(&amp2_data, target_count_A3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xA0);
-				break;
-		case(0b111): // B3
-				update_amp2(&amp2_data, target_count_B3, &last_count);
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x83);
-				break;
-		default: // reset for default case
-			update_amp2(&amp2_data, target_count_OFF, &last_count);
-			XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0x0);
-			XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
-			break;
+	            case 0x02:  // Octave 5
+	                switch (btn_data & GPIO2_BTN_MASK) {
+	                    case 0b001: current_target_count = target_count_C5; break;
+	                    case 0b010: current_target_count = target_count_D5; break;
+	                }
+	                break;
+	        }
 
+	        // Update 7-segment display for the active note
+	        if (current_target_count != target_count_OFF) {
+	            // Display the appropriate note letter
+	            XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
 
-		}
+	            // Set the appropriate segment pattern based on the note
+	            u32 segment_pattern = 0xFF;  // Default (blank)
 
-		break;
-		case(0x01): //Octave 4
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
-				switch(btn_data & GPIO2_BTN_MASK){ // using button data
-				case(0b001): // C4
-						update_amp2(&amp2_data, target_count_C4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xC6);
-						break;
-				case(0b010): //D4
-						update_amp2(&amp2_data, target_count_D4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xA1);
-						break;
-				case(0b011): //E4
-						update_amp2(&amp2_data, target_count_E4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x86);
-						break;
-				case(0b100): //F4
-						update_amp2(&amp2_data, target_count_F4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x8e);
-						break;
-				case(0b101): // G4
-						update_amp2(&amp2_data, target_count_G4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x90);
-						break;
-				case (0b110): // A4
-						update_amp2(&amp2_data, target_count_A4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xA0);
-						break;
+	            // Determine which note is playing and set the correct segment pattern
+	            if ((btn_data & GPIO2_BTN_MASK) == 0b001) {
+	                segment_pattern = 0xC6;  // 'C'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b010) {
+	                segment_pattern = 0xA1;  // 'D'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b011) {
+	                segment_pattern = 0x86;  // 'E'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b100) {
+	                segment_pattern = 0x8E;  // 'F'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b101) {
+	                segment_pattern = 0x90;  // 'G'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b110) {
+	                segment_pattern = 0xA0;  // 'A'
+	            } else if ((btn_data & GPIO2_BTN_MASK) == 0b111) {
+	                segment_pattern = 0x83;  // 'b'
+	            }
 
-				case (0b111): // B4
-						update_amp2(&amp2_data, target_count_B4, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0x83);
-						break;
-				default: // Reset for default case
-						update_amp2(&amp2_data, target_count_OFF, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0x0);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
-						break;
+	            XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, segment_pattern);
+	        }
+	    } else {
+	        // No buttons pressed, turn off display
+	        XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0x0);
+	        XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
+	    }
 
-				} // end of case
-		break;
-
-		case(0x02): // octave 5 note (check table in assignment for more)
-				XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-				XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
-				switch (btn_data & GPIO2_BTN_MASK){ // btn_data, used for determining output based on button input
-				case(0b001): //C5 in sheet
-						update_amp2(&amp2_data, target_count_C5, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xC6);
-						break;
-				case(0b010): // D5 in assignment sheet
-						update_amp2(&amp2_data, target_count_D5, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0xe);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xA1);
-						break;
-				default: // must reset on default
-						update_amp2(&amp2_data, target_count_OFF, &last_count);
-						XGpio_DiscreteWrite(&device1, GPIO1_ANODE_CH, 0x0);
-						XGpio_DiscreteWrite(&device1, GPIO1_CATHODE_CH, 0xFF);
-						break;
-
-				} // end of btn case
-				break;
-		} // end of switch case
-
-
-
-	} // end of while
+	    // Always update the AMP2 with the current target count
+	    update_amp2(&amp2_data, current_target_count, &last_count);
+	}
 
 
 
